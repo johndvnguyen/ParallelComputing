@@ -19,7 +19,7 @@ public class PrefixScan extends GeneralScan<Integer, Tally> {
 	}
 	
 	protected Tally combine(Tally left, Tally right) {
-		//System.out.println(left + " " + right);
+		System.out.println(left.d + " " + right.d);
 		return new Tally(left.d + right.d);
 	}
 
@@ -41,6 +41,8 @@ public class PrefixScan extends GeneralScan<Integer, Tally> {
 		//print out prefix sum
 		
 		System.out.println("reduction: " + pScan.getReduction(0).d);
+		
+		
 		pScan.getScan(output);
 		//print out the scan arraylist
 		for(int i=0; i< output.size(); i++)

@@ -8,43 +8,25 @@ public class GeneralScan<ElemType, TallyType> {
 	public class ComputeReduction extends RecursiveAction{
 		//public variables
 		int i;
-		TallyType reduction;
 		//constructor
 		public ComputeReduction(int i) {
 			this.i = i;
 		}
 		//function to be picked up by forkjoinpool
 		protected void compute() {
-			if(!isLeaf(i)) {
-				if(i < N_THREADS-2) {//make new thread
-					
-					invokeAll(new ComputeReduction(right(i)));
-					directCompute(left(i));
-					
-					//System.out.println("active thread count: " + threadPool.getActiveThreadCount());
-
-				}
-				else {//no thread creation
-					directCompute(left(i));
-					
-					directCompute(right(i));
-				}
-				
-				interior.set(i, combine(value(left(i)), value(right(i))));
-				
-			}
+			recursiveCompute(i); //compute can't have any params so call recursive compute
 		}
-		protected void directCompute(Integer i) {
+		protected void recursiveCompute(Integer i) {
 			if(!isLeaf(i)) {
 				if(i < N_THREADS-2) {//make new thread
 					invokeAll(new ComputeReduction(right(i)));
 					//invokeAll(new ComputeReduction(right(i)));
-					directCompute(left(i));
+					recursiveCompute(left(i));
 					//System.out.println("active thread count: " + threadPool.getActiveThreadCount());
 				}
 				else {//no thread creation
-					directCompute(left(i));
-					directCompute(right(i));
+					recursiveCompute(left(i));
+					recursiveCompute(right(i));
 				}
 				
 				interior.set(i, combine(value(left(i)), value(right(i))));
@@ -67,30 +49,23 @@ public class GeneralScan<ElemType, TallyType> {
 		}
 		//function to be picked up by forkjoinpool
 		protected void compute() {
-			if (isLeaf(i)) {
-				output.set(i - (n-1), combine(tallyPrior, value(i)));
-			} else {
-				if (i < N_THREADS-2) {
-					//need to replace with threads
-					invokeAll(new ComputeScan(left(i), tallyPrior, output));
-					directCompute(right(i), combine(tallyPrior, value(left(i))), output);
-				} else {
-					directCompute(left(i), tallyPrior, output);
-					directCompute(right(i), combine(tallyPrior, value(left(i))), output);
-				}
-			}
+			recursiveCompute(i,tallyPrior,output);
 		}
-		protected void directCompute(int i, TallyType tallyPior, ArrayList<TallyType> output) {
+		
+		protected void recursiveCompute(int i, TallyType tallyPrior, ArrayList<TallyType> output) {
 			if (isLeaf(i)) {
 				output.set(i - (n-1), combine(tallyPrior, value(i)));
 			} else {
 				if (i < N_THREADS-2) {
 					//need to replace with threads
+					//System.out.println("Left:: i; " + i + ", tallyprior: " + tallyPrior);
 					invokeAll(new ComputeScan(left(i), tallyPrior, output));
-					directCompute(right(i), combine(tallyPrior, value(left(i))), output);
+					//recursiveCompute(left(i), tallyPrior, output);
+					
+					recursiveCompute(right(i), combine(tallyPrior, value(left(i))), output);
 				} else {
-					directCompute(left(i), tallyPrior, output);
-					directCompute(right(i), combine(tallyPrior, value(left(i))), output);
+					recursiveCompute(left(i), tallyPrior, output);
+					recursiveCompute(right(i), combine(tallyPrior, value(left(i))), output);
 				}
 			}
 			
@@ -171,11 +146,12 @@ public class GeneralScan<ElemType, TallyType> {
 		return right(i) >= size();
 	}
 	
-//	private boolean reduce(int i) {
-//				
-//
-//	}
-	
+	private boolean reduce(int i) {
+		threadPool.invoke( new ComputeReduction(i));
+		return true;		
+
+	}
+	// this is no longer used
 	private void scan(int i, TallyType tallyPrior, ArrayList<TallyType> output) {
 		if (isLeaf(i)) {
 			output.set(i - (n-1), combine(tallyPrior, value(i)));
@@ -195,17 +171,14 @@ public class GeneralScan<ElemType, TallyType> {
 
 	public TallyType getReduction(int i) {
 		
-		threadPool.invoke( new ComputeReduction(i));
-		//return true;
-		
-		//reduced = reduced || reduce(ROOT);
+		reduced = reduced || reduce(ROOT);
 		return value(i);
 	}
 	
 	public void getScan(ArrayList<TallyType> output) {
-		//reduced = reduced || reduce(ROOT);
+		reduced = reduced || reduce(ROOT);
 		threadPool.invoke( new ComputeScan(ROOT, init(), output));
-
+		//scan(ROOT,init(),output);
 	}
 	
 }
