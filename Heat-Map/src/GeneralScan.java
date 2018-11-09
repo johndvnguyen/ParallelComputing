@@ -40,12 +40,10 @@ public class GeneralScan<ElemType, TallyType> {
 					invokeAll(new ComputeReduction(right(i)));
 					//invokeAll(new ComputeReduction(right(i)));
 					directCompute(left(i));
-					System.out.println("active thread count: " + threadPool.getActiveThreadCount());
-
+					//System.out.println("active thread count: " + threadPool.getActiveThreadCount());
 				}
 				else {//no thread creation
 					directCompute(left(i));
-					
 					directCompute(right(i));
 				}
 				
@@ -56,6 +54,48 @@ public class GeneralScan<ElemType, TallyType> {
 		}
 	}
 	
+	public class ComputeScan extends RecursiveAction{
+		//public variables
+		int i;
+		TallyType tallyPrior;
+		ArrayList<TallyType> output;
+		//constructor
+		public ComputeScan(int i, TallyType tallyPrior, ArrayList<TallyType> output) {
+			this.i = i;
+			this.tallyPrior= tallyPrior;
+			this.output = output;
+		}
+		//function to be picked up by forkjoinpool
+		protected void compute() {
+			if (isLeaf(i)) {
+				output.set(i - (n-1), combine(tallyPrior, value(i)));
+			} else {
+				if (i < N_THREADS-2) {
+					//need to replace with threads
+					invokeAll(new ComputeScan(left(i), tallyPrior, output));
+					directCompute(right(i), combine(tallyPrior, value(left(i))), output);
+				} else {
+					directCompute(left(i), tallyPrior, output);
+					directCompute(right(i), combine(tallyPrior, value(left(i))), output);
+				}
+			}
+		}
+		protected void directCompute(int i, TallyType tallyPior, ArrayList<TallyType> output) {
+			if (isLeaf(i)) {
+				output.set(i - (n-1), combine(tallyPrior, value(i)));
+			} else {
+				if (i < N_THREADS-2) {
+					//need to replace with threads
+					invokeAll(new ComputeScan(left(i), tallyPrior, output));
+					directCompute(right(i), combine(tallyPrior, value(left(i))), output);
+				} else {
+					directCompute(left(i), tallyPrior, output);
+					directCompute(right(i), combine(tallyPrior, value(left(i))), output);
+				}
+			}
+			
+		}
+	}
 	
 	//private class variables
 	private List<ElemType> rawData; //static array as this does not change
@@ -164,7 +204,7 @@ public class GeneralScan<ElemType, TallyType> {
 	
 	public void getScan(ArrayList<TallyType> output) {
 		//reduced = reduced || reduce(ROOT);
-		//scan(ROOT, init(), output);
+		threadPool.invoke( new ComputeScan(ROOT, init(), output));
 
 	}
 	

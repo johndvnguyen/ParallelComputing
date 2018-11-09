@@ -1,27 +1,26 @@
 import java.util.ArrayList;
 import java.util.List;
 
-public class PrefixScan extends GeneralScan<Integer, Double> {
+
+
+public class PrefixScan extends GeneralScan<Integer, Tally> {
 	
-	public class Tally {
-		
-	}
 
 	public PrefixScan(List<Integer> raw) {
 		super(raw);
 	}
 	
-	protected Double init() {
-		return 0.0;
+	protected Tally init() {
+		return new Tally(0.0);
 	}
 	
-	protected Double prepare(Integer datum) {
-		return (double) datum;
+	protected Tally prepare(Integer datum) {
+		return new Tally(datum);
 	}
 	
-	protected Double combine(Double left, Double right) {
-		System.out.println(left + " " + right);
-		return left + right;
+	protected Tally combine(Tally left, Tally right) {
+		//System.out.println(left + " " + right);
+		return new Tally(left.d + right.d);
 	}
 
 	public static void main(String[] args) {
@@ -34,19 +33,19 @@ public class PrefixScan extends GeneralScan<Integer, Double> {
 		}
 		
 		//create arraylist for storing scan result
-		ArrayList<Double> output = new ArrayList<Double>(n);
+		ArrayList<Tally> output = new ArrayList<Tally>(n);
 		//initialize output array
 		while(output.size()<n)
-			output.add(0.0);
+			output.add(new Tally(0.0));
 		PrefixScan pScan = new PrefixScan(testData);
-		//pScan.getScan(output);
-		//print out the scan arraylist
-		//for(int i=0; i< output.size(); i++)
-//			System.out.println("i: " + i +", value: " + output.get(i));
 		//print out prefix sum
-		//pScan.getReduction(0);
-		System.out.println("reduction: " + pScan.getReduction(0));
-
+		
+		System.out.println("reduction: " + pScan.getReduction(0).d);
+		pScan.getScan(output);
+		//print out the scan arraylist
+		for(int i=0; i< output.size(); i++)
+			System.out.println("i: " + i +", value: " + output.get(i).d);
+		
 	}
 
 }
