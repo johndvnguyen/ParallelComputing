@@ -19,13 +19,14 @@ public class PrefixScan extends GeneralScan<Integer, Tally> {
 	}
 	
 	protected Tally combine(Tally left, Tally right) {
-		System.out.println(left.d + " " + right.d);
+		//System.out.println(left.d + " " + right.d);
 		return new Tally(left.d + right.d);
 	}
 
 	public static void main(String[] args) {
 		// Create test array of data from -1 to 1
-		int n = 32;
+		int n = 1<<10
+				;
 		
 		List<Integer> testData = new ArrayList<Integer>(n);
 		for(int i = 0; i < n; i++) {
@@ -42,11 +43,12 @@ public class PrefixScan extends GeneralScan<Integer, Tally> {
 		
 		System.out.println("reduction: " + pScan.getReduction(0).d);
 		
-		
+
 		pScan.getScan(output);
 		//print out the scan arraylist
-		for(int i=0; i< output.size(); i++)
+		for(int i=0; i< 10; i++)
 			System.out.println("i: " + i +", value: " + output.get(i).d);
+		System.out.println("i: " + (n-1) +", value: " + output.get(n-1).d);
 		
 	}
 

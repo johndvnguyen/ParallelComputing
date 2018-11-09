@@ -18,11 +18,13 @@ public class GeneralScan<ElemType, TallyType> {
 		}
 		protected void recursiveCompute(Integer i) {
 			if(!isLeaf(i)) {
-				if(i < N_THREADS-2) {//make new thread
-					invokeAll(new ComputeReduction(right(i)));
+				if(leafCount(i) > n/16) {//make new thread
+					ComputeReduction right = new ComputeReduction(right(i));
+					right.fork();
 					//invokeAll(new ComputeReduction(right(i)));
 					recursiveCompute(left(i));
-					//System.out.println("active thread count: " + threadPool.getActiveThreadCount());
+					right.join();
+					System.out.println("Reduction active thread count: " + threadPool.getActiveThreadCount());
 				}
 				else {//no thread creation
 					recursiveCompute(left(i));
@@ -56,13 +58,14 @@ public class GeneralScan<ElemType, TallyType> {
 			if (isLeaf(i)) {
 				output.set(i - (n-1), combine(tallyPrior, value(i)));
 			} else {
-				if (i < N_THREADS-2) {
+				if (leafCount(i) > n/16) {
 					//need to replace with threads
 					//System.out.println("Left:: i; " + i + ", tallyprior: " + tallyPrior);
-					invokeAll(new ComputeScan(left(i), tallyPrior, output));
+					ComputeScan scanLeft = new ComputeScan(left(i), tallyPrior, output);
+					scanLeft.fork();
 					//recursiveCompute(left(i), tallyPrior, output);
-					
 					recursiveCompute(right(i), combine(tallyPrior, value(left(i))), output);
+					scanLeft.join();
 				} else {
 					recursiveCompute(left(i), tallyPrior, output);
 					recursiveCompute(right(i), combine(tallyPrior, value(left(i))), output);
@@ -146,6 +149,18 @@ public class GeneralScan<ElemType, TallyType> {
 		return right(i) >= size();
 	}
 	
+	//takes any node index and returns number of leaves below using the recursive method leaf count. 
+	protected int leafCount(int index) {
+		int sum=0;
+		if(!isLeaf(index)) {
+			sum+=leafCount(left(index));
+			sum+=leafCount(right(index));
+		}else
+			return 1;
+		
+		return sum;
+	}
+	
 	private boolean reduce(int i) {
 		threadPool.invoke( new ComputeReduction(i));
 		return true;		
@@ -156,7 +171,7 @@ public class GeneralScan<ElemType, TallyType> {
 		if (isLeaf(i)) {
 			output.set(i - (n-1), combine(tallyPrior, value(i)));
 		} else {
-			if (i < N_THREADS-2) {
+			if (leafCount(i) > n/4) {
 				//need to replace with threads
 				scan(left(i), tallyPrior, output);
 				scan(right(i), combine(tallyPrior, value(left(i))), output);
