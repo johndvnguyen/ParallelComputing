@@ -1,7 +1,62 @@
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.RecursiveAction;
 
 public class GeneralScan<ElemType, TallyType> {
+	
+	public class ComputeReduction extends RecursiveAction{
+		//public variables
+		int i;
+		TallyType reduction;
+		//constructor
+		public ComputeReduction(int i) {
+			this.i = i;
+		}
+		//function to be picked up by forkjoinpool
+		protected void compute() {
+			if(!isLeaf(i)) {
+				if(i < N_THREADS-2) {//make new thread
+					
+					invokeAll(new ComputeReduction(right(i)));
+					directCompute(left(i));
+					
+					//System.out.println("active thread count: " + threadPool.getActiveThreadCount());
+
+				}
+				else {//no thread creation
+					directCompute(left(i));
+					
+					directCompute(right(i));
+				}
+				
+				interior.set(i, combine(value(left(i)), value(right(i))));
+				
+			}
+		}
+		protected void directCompute(Integer i) {
+			if(!isLeaf(i)) {
+				if(i < N_THREADS-2) {//make new thread
+					invokeAll(new ComputeReduction(right(i)));
+					//invokeAll(new ComputeReduction(right(i)));
+					directCompute(left(i));
+					System.out.println("active thread count: " + threadPool.getActiveThreadCount());
+
+				}
+				else {//no thread creation
+					directCompute(left(i));
+					
+					directCompute(right(i));
+				}
+				
+				interior.set(i, combine(value(left(i)), value(right(i))));
+				
+			}
+			
+		}
+	}
+	
+	
 	//private class variables
 	private List<ElemType> rawData; //static array as this does not change
 	private List<TallyType> interior; 
@@ -9,6 +64,7 @@ public class GeneralScan<ElemType, TallyType> {
 	private boolean reduced;
 	private int height;
 	private int n;
+	private ForkJoinPool threadPool;
 	
 	//constant public thread
 	public final int N_THREADS=16;
@@ -24,11 +80,14 @@ public class GeneralScan<ElemType, TallyType> {
 		interior = new ArrayList<TallyType>(n-1);
 		//initialize the arraylist
 		while(interior.size()<n-1)
-			interior.add(null);
+			interior.add(init());
 		// must be power of 2
 		if(1<<height != n) {
 			throw new IllegalArgumentException("n must be a power of 2");
 		}
+		
+		//define thread pool
+		this.threadPool = new ForkJoinPool(N_THREADS);
 	}
 	
 	//protected methods
@@ -72,33 +131,17 @@ public class GeneralScan<ElemType, TallyType> {
 		return right(i) >= size();
 	}
 	
-	private boolean reduce(int i) {
-		if(!isLeaf(i)) {
-			if(i < N_THREADS-2) {
-				//thread split off
-				//reduce recursive call
-				//wait for thread
-				reduce(left(i));
-				
-				reduce(right(i));
-			}
-			else {
-				reduce(left(i));
-				
-				reduce(right(i));
-			}
-			
-			interior.set(i, combine(value(left(i)), value(right(i))));
-			
-		}
-		return true;
-	}
+//	private boolean reduce(int i) {
+//				
+//
+//	}
 	
 	private void scan(int i, TallyType tallyPrior, ArrayList<TallyType> output) {
 		if (isLeaf(i)) {
 			output.set(i - (n-1), combine(tallyPrior, value(i)));
 		} else {
 			if (i < N_THREADS-2) {
+				//need to replace with threads
 				scan(left(i), tallyPrior, output);
 				scan(right(i), combine(tallyPrior, value(left(i))), output);
 			} else {
@@ -111,13 +154,17 @@ public class GeneralScan<ElemType, TallyType> {
 	//public methods
 
 	public TallyType getReduction(int i) {
-		reduced = reduced || reduce(ROOT);
+		
+		threadPool.invoke( new ComputeReduction(i));
+		//return true;
+		
+		//reduced = reduced || reduce(ROOT);
 		return value(i);
 	}
 	
 	public void getScan(ArrayList<TallyType> output) {
-		reduced = reduced || reduce(ROOT);
-		scan(ROOT, init(), output);
+		//reduced = reduced || reduce(ROOT);
+		//scan(ROOT, init(), output);
 
 	}
 	
