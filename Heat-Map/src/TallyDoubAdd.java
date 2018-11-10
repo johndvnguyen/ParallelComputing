@@ -1,26 +1,39 @@
-import java.util.ArrayList;
+/***
+ * @file GeneralScan.java
+ * @author John Nguyen
+ * CPSC 5600 HW5A
+ * 
+ * TallyDoubAdd Class Implementation of the Tally Interface by Professor Lundeen
+ * 
+ */
 
-//Mutable class to hold a double as our Tally
+
+
+/***
+ * Mutable class to hold a double as our Tally
+ * Doubles are not mutable within Java, so this class stores the doubles in a mutable fashion.
+ * Also has methods to clone and combine similar objects of the same class
+ *
+ */
 public class TallyDoubAdd implements Tally<Double>{
+	//class variable is public similar to the example in lecture
 	public double d;
-	public double prefix;
-	public ArrayList<Double> dList;
+	
+	///Constructors
+	public TallyDoubAdd() {
+	}
 	
 	public TallyDoubAdd(Double d) {
 		this.d = d;
-		this.prefix = 0;
-		this.dList = new ArrayList<Double>(0);
-
 	}
 	
 	public TallyDoubAdd(Integer d) {
 		this.d = d;
-		this.prefix=0;
-		this.dList = new ArrayList<Double>();
 
 	}
 	
 	//should take in a tally list, compute the running sum and add it to the list. 
+	@Override
 	public void accum(Double elem) {
 		this.d += elem;
 		
@@ -33,14 +46,13 @@ public class TallyDoubAdd implements Tally<Double>{
 	}
 
 	@Override
-	public Tally<Double> init() {
-		// TODO Auto-generated method stub
-		return null;
+	public TallyDoubAdd init() {
+		return new TallyDoubAdd();
 	}
 
 	@Override
 	public void combine(Tally<Double> other) {
-		// TODO Auto-generated method stub
+		this.d += ((TallyDoubAdd)other).d;
 		
 	}
 	
