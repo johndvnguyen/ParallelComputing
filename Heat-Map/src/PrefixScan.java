@@ -24,30 +24,44 @@ public class PrefixScan extends GeneralScan<Integer, Tally> {
 		return new Tally(left.d + right.d);
 	}
 	
+	protected Tally accum(List<Tally> output, Tally datum) {
+		throw new IllegalArgumentException("This function to be overwritten");
+	}
+	
+	protected void printVal(Tally tally) {
+		System.out.println("this tally has a value of: " + tally.d);
+	}
 
 	public static void main(String[] args) {
 		// Create test array of data from -1 to 1
-		int n = 1<<20;
+		int n = 10;
 		
 		List<Integer> testData = new ArrayList<Integer>(n);
-		for(int i = 0; i < n; i++) {
+		for(int i = 1; i <= n; i++) {
 			testData.add(i);
 		}
+
 		
 		//create arraylist for storing scan result
 		ArrayList<Tally> output = new ArrayList<Tally>(n);
 		//initialize output array
 		while(output.size()<n)
 			output.add(new Tally(0.0));
-		PrefixScan pScan = new PrefixScan(testData, 1000);
+		PrefixScan pScan = new PrefixScan(testData, 4);
 		//print out prefix sum
 		
-		System.out.println("reduction: " + pScan.getReduction(0).d);
+		//test first and last
+		int x= 2;
+		System.out.println("node " + x +"'s first leaf is: " +pScan.firstLeaf(x) +" and last leaf is: " + pScan.lastLeaf(x));
 		
+		
+		
+		System.out.println("reduction: " + pScan.getReduction(0).d);
 
-		pScan.getScan(output);
+
+		//pScan.getScan(output);
 		//print out the scan arraylist
-		for(int i=0; i< 10; i++)
+		for(int i=0; i< 8; i++)
 			System.out.println("i: " + i +", value: " + output.get(i).d);
 		System.out.println("i: " + (n-1) +", value: " + output.get(n-1).d);
 		

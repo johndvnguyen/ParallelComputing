@@ -16,9 +16,37 @@ public class GeneralScan<ElemType, TallyType> {
 		
 		//function to be picked up by forkjoinpool
 		protected void compute() {
-			recursiveCompute(i);//compute can't have any params so call recursive compute
+			//recursiveCompute(i);//compute can't have any params so call recursive compute
+			schwartzCompute(i);
 		}
 		
+		protected void schwartzCompute(Integer i) {
+			System.out.println("Node:" + i);
+			if(!isLeaf(i)) {
+				//check to see if we should split thread if we are at the cap
+				if(leafCount(i) > threshold) {
+					
+					ComputeReduction right = new ComputeReduction(right(i));
+					right.fork();
+					//invokeAll(new ComputeReduction(right(i)));
+					schwartzCompute(left(i));
+					right.join();
+					interior.set(i, combine(value(left(i)), value(right(i))));	
+					
+				}else {
+					System.out.println("Inside the reduction else: " + i );
+					//if we are not at the cap we should loop across leaves
+					for(int j = firstLeaf(i); j <= lastLeaf(i); j++) {
+						System.out.println(i +": Inside the reduction else loop: " + j);
+						//update the interior node or each value o its leaves
+						interior.set(i, combine(value(i), value(j)));
+						printVal(value(j));
+					}
+					//interior.set(i, combine(value(left(i)), value(right(i))));
+				}
+				
+			}
+		}
 		
 		
 		protected void recursiveCompute(Integer i) {
@@ -29,7 +57,7 @@ public class GeneralScan<ElemType, TallyType> {
 					//invokeAll(new ComputeReduction(right(i)));
 					recursiveCompute(left(i));
 					right.join();
-					System.out.println("Reduction active thread count: " + threadPool.getActiveThreadCount());
+					//System.out.println("Reduction active thread count: " + threadPool.getActiveThreadCount());
 				}
 				else {//no thread creation
 					recursiveCompute(left(i));
@@ -107,9 +135,9 @@ public class GeneralScan<ElemType, TallyType> {
 		while(interior.size()<n-1)
 			interior.add(init());
 		// must be power of 2
-		if(1<<height != n) {
-			throw new IllegalArgumentException("n must be a power of 2");
-		}
+//		if(1<<height != n) {
+//			throw new IllegalArgumentException("n must be a power of 2");
+//		}
 		
 		//define thread pool
 		this.threadPool = new ForkJoinPool(N_THREADS);
@@ -129,6 +157,10 @@ public class GeneralScan<ElemType, TallyType> {
 	}
 
 	protected TallyType accum(List<TallyType> output, ElemType datum) {
+		throw new IllegalArgumentException("This function to be overwritten");
+	}
+	
+	protected void printVal(TallyType tally) {
 		throw new IllegalArgumentException("This function to be overwritten");
 	}
 	
@@ -172,9 +204,25 @@ public class GeneralScan<ElemType, TallyType> {
 		return sum;
 	}
 	
+	//determines first leaf for an interior node i
+	protected int firstLeaf(int i) {
+		
+		while( i<=(2*n-2) && !isLeaf(i)) {
+			i = left(i);
+		}
+		return i;
+	}
+	
+	protected int lastLeaf(int i) {
+		while(i<=(2*n-2) && !isLeaf(i)){
+			i = right(i);
+		}
+		return i;
+		
+	}
 	
 	private boolean reduce(int i) {
-		threadPool.invoke( new ComputeReduction(i));
+		threadPool.invoke(new ComputeReduction(i));
 		return true;		
 
 	}

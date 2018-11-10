@@ -10,5 +10,8 @@ public class Tally {
 		this.d = d;
 	}
 	
+	public void accum(Tally t) {
+		this.d += t.d;
+	}
 	
 }
