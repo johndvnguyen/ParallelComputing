@@ -8,17 +8,22 @@ public class GeneralScan<ElemType, TallyType> {
 	public class ComputeReduction extends RecursiveAction{
 		//public variables
 		int i;
+		TallyType reduction;
 		//constructor
 		public ComputeReduction(int i) {
 			this.i = i;
 		}
+		
 		//function to be picked up by forkjoinpool
 		protected void compute() {
-			recursiveCompute(i); //compute can't have any params so call recursive compute
+			recursiveCompute(i);//compute can't have any params so call recursive compute
 		}
+		
+		
+		
 		protected void recursiveCompute(Integer i) {
 			if(!isLeaf(i)) {
-				if(leafCount(i) > n/16) {//make new thread
+				if(leafCount(i) > threshold) {//make new thread
 					ComputeReduction right = new ComputeReduction(right(i));
 					right.fork();
 					//invokeAll(new ComputeReduction(right(i)));
@@ -58,7 +63,7 @@ public class GeneralScan<ElemType, TallyType> {
 			if (isLeaf(i)) {
 				output.set(i - (n-1), combine(tallyPrior, value(i)));
 			} else {
-				if (leafCount(i) > n/16) {
+				if (leafCount(i) > threshold) {
 					//need to replace with threads
 					//System.out.println("Left:: i; " + i + ", tallyprior: " + tallyPrior);
 					ComputeScan scanLeft = new ComputeScan(left(i), tallyPrior, output);
@@ -77,21 +82,23 @@ public class GeneralScan<ElemType, TallyType> {
 	
 	//private class variables
 	private List<ElemType> rawData; //static array as this does not change
-	private List<TallyType> interior; 
-	private final int ROOT = 0;
-	private boolean reduced;
-	private int height;
-	private int n;
+	private List<TallyType> interior;  //interior nodes.
+	private final int ROOT = 0; //root of the tree
+	private boolean reduced; // is the data reduced.
+	private int height; //tree height
+	private int threshold; //threshold of leaves
+	private int n; //total num leaves
 	private ForkJoinPool threadPool;
 	
 	//constant public thread
 	public final int N_THREADS=16;
 	
 	//constructor
-	public GeneralScan(List<ElemType> raw) {
+	public GeneralScan(List<ElemType> raw, int threshold) {
 		this.reduced = false;
 		this.n = raw.size();
 		this.rawData = raw;
+		this.threshold = threshold;
 		//calculate log base 2 of n 
 		this.height = (int) Math.ceil(Math.log(n)/Math.log(2));
 		//n-1 interior nodes
@@ -118,6 +125,10 @@ public class GeneralScan<ElemType, TallyType> {
 	}
 	
 	protected TallyType combine(TallyType left, TallyType right) {
+		throw new IllegalArgumentException("This function to be overwritten");
+	}
+
+	protected TallyType accum(List<TallyType> output, ElemType datum) {
 		throw new IllegalArgumentException("This function to be overwritten");
 	}
 	
@@ -150,7 +161,7 @@ public class GeneralScan<ElemType, TallyType> {
 	}
 	
 	//takes any node index and returns number of leaves below using the recursive method leaf count. 
-	protected int leafCount(int index) {
+	private int leafCount(int index) {
 		int sum=0;
 		if(!isLeaf(index)) {
 			sum+=leafCount(left(index));
@@ -160,6 +171,7 @@ public class GeneralScan<ElemType, TallyType> {
 		
 		return sum;
 	}
+	
 	
 	private boolean reduce(int i) {
 		threadPool.invoke( new ComputeReduction(i));

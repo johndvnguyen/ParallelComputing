@@ -6,8 +6,9 @@ import java.util.List;
 public class PrefixScan extends GeneralScan<Integer, Tally> {
 	
 
-	public PrefixScan(List<Integer> raw) {
-		super(raw);
+	
+	public PrefixScan(List<Integer> raw, int threshold) {
+		super(raw, threshold);
 	}
 	
 	protected Tally init() {
@@ -22,11 +23,11 @@ public class PrefixScan extends GeneralScan<Integer, Tally> {
 		//System.out.println(left.d + " " + right.d);
 		return new Tally(left.d + right.d);
 	}
+	
 
 	public static void main(String[] args) {
 		// Create test array of data from -1 to 1
-		int n = 1<<10
-				;
+		int n = 1<<20;
 		
 		List<Integer> testData = new ArrayList<Integer>(n);
 		for(int i = 0; i < n; i++) {
@@ -38,7 +39,7 @@ public class PrefixScan extends GeneralScan<Integer, Tally> {
 		//initialize output array
 		while(output.size()<n)
 			output.add(new Tally(0.0));
-		PrefixScan pScan = new PrefixScan(testData);
+		PrefixScan pScan = new PrefixScan(testData, 1000);
 		//print out prefix sum
 		
 		System.out.println("reduction: " + pScan.getReduction(0).d);
