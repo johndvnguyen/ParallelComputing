@@ -21,7 +21,6 @@ public class GeneralScan<ElemType, TallyType> {
 		}
 		
 		protected void schwartzCompute(Integer i) {
-			System.out.println("Node:" + i);
 			if(!isLeaf(i)) {
 				//check to see if we should split thread if we are at the cap
 				if(leafCount(i) > threshold) {
@@ -34,15 +33,14 @@ public class GeneralScan<ElemType, TallyType> {
 					interior.set(i, combine(value(left(i)), value(right(i))));	
 					
 				}else {
-					System.out.println("Inside the reduction else: " + i );
+					//System.out.println("Inside the reduction else: " + i );
 					//if we are not at the cap we should loop across leaves
 					for(int j = firstLeaf(i); j <= lastLeaf(i); j++) {
-						System.out.println(i +": Inside the reduction else loop: " + j);
+						//System.out.println(i +": Inside the reduction else loop: " + j);
 						//update the interior node or each value o its leaves
 						interior.set(i, combine(value(i), value(j)));
-						printVal(value(j));
+						//printVal(value(j));
 					}
-					//interior.set(i, combine(value(left(i)), value(right(i))));
 				}
 				
 			}
@@ -84,7 +82,37 @@ public class GeneralScan<ElemType, TallyType> {
 		}
 		//function to be picked up by forkjoinpool
 		protected void compute() {
-			recursiveCompute(i,tallyPrior,output);
+			//recursiveCompute(i,tallyPrior,output);
+			schwartzCompute(i,tallyPrior,output);
+			
+		}
+		protected void schwartzCompute(Integer i,TallyType tallyPrior, ArrayList<TallyType> output) {
+			//System.out.println("Node:" + i);
+			if(!isLeaf(i)) {
+				//check to see if we should split thread if we are at the cap
+				if(leafCount(i) > threshold) {
+					
+					//System.out.println("Left:: i; " + i + ", tallyprior: " + tallyPrior);
+					ComputeScan scanLeft = new ComputeScan(left(i), tallyPrior, output);
+					scanLeft.fork();
+					//recursiveCompute(left(i), tallyPrior, output);
+					
+					schwartzCompute(right(i), combine(tallyPrior, value(left(i))), output);
+					scanLeft.join();
+
+				}else {
+					//System.out.println("Inside the scan else: " + i );
+					//if we are not at the cap we should loop across leaves
+					for(int j = firstLeaf(i); j <= lastLeaf(i); j++) {
+						//System.out.println(i +": Inside the scan else loop: " + j);
+						accum(tallyPrior,value(j));
+						output.set(j-(n-1), cloneTally(tallyPrior) );
+
+					}
+
+				}
+				
+			}
 		}
 		
 		protected void recursiveCompute(int i, TallyType tallyPrior, ArrayList<TallyType> output) {
@@ -156,7 +184,11 @@ public class GeneralScan<ElemType, TallyType> {
 		throw new IllegalArgumentException("This function to be overwritten");
 	}
 
-	protected TallyType accum(List<TallyType> output, ElemType datum) {
+	protected void accum(TallyType left, TallyType right) {
+		throw new IllegalArgumentException("This function to be overwritten");
+	}
+	
+	protected TallyType cloneTally(TallyType tally) {
 		throw new IllegalArgumentException("This function to be overwritten");
 	}
 	

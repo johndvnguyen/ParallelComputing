@@ -1,17 +1,56 @@
-//Mutable class to hold a double as our Tally
-public class Tally {
-	public double d;
+/*
+ * Seattle University, CPSC5600, Fall 2018
+ * Kevin Lundeen
+ */
+
+/**
+ * Interface required for use in general Reduce and Scan classes.
+ *
+ * @param <ElemType>  data element type being tallied
+ */
+public interface Tally<ElemType> {
 	
-	public Tally(Double d) {
-		this.d = d;
+	/**
+	 * This method acts as a factory to create new Tally objects of the same type.
+	 * Typically, these have the same instance data as <code>this</code> except for
+	 * identity-like values. Used for the start of a reduce or scan operation.
+	 * 
+	 * @return  a new identity Tally
+	 */
+	public Tally<ElemType> init();
+	
+	/**
+	 * This method clones the Tally such that it is independent of <code>this</code>.
+	 * 
+	 * @return  a new object that has the same data
+	 */
+	public Tally<ElemType> clone();
+	
+	/**
+	 * Accumulate an data element into this Tally.
+	 * 
+	 * @param elem   data element to accumulate into the Tally
+	 */
+	public void accum(ElemType elem);
+	
+	/**
+	 * Combing this Tally with another.
+	 * We assume that the the other is the exact same type and size.
+	 * Used to combine subtrees in a reduction or scan.
+	 * 
+	 * @param other  the right side of the reduction evaluation tree
+	 */
+	public void combine(Tally<ElemType> other);
+	
+	/**
+	 * Occasionally, we'd like to create a Tally directly from a single data element.
+	 * 
+	 * @param elem  single element to include in the returned Tally
+	 * @return      Tally with just the given elem's contribution
+	 */
+	public default Tally<ElemType> prepare(ElemType elem) {
+		Tally<ElemType> tally = init();
+		tally.accum(elem);
+		return tally;
 	}
-	
-	public Tally(Integer d) {
-		this.d = d;
-	}
-	
-	public void accum(Tally t) {
-		this.d += t.d;
-	}
-	
 }
