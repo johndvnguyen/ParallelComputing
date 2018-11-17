@@ -67,8 +67,8 @@ public class PrefixScan extends GeneralScan<Integer, TallyDoubAdd> {
 	 * Does not create a new tally object
 	 */
 	@Override
-	protected void accum(TallyDoubAdd left, TallyDoubAdd right) {
-		left.accum(right.d);
+	protected void accum(TallyDoubAdd tally, Integer data) {
+		tally.accum((double) data);
 	}
 	
 	/***

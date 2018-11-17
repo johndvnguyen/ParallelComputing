@@ -32,8 +32,8 @@ public class GeneralScan<ElemType, TallyType> {
 	 * Uses schwartz's algorithm in a tight loop to compute subsets of the raw data
 	 */
 	public class ComputeReduction extends RecursiveAction{
-		//public variables
-		int i;
+		//private variables
+		private int i;
 		
 		//constructor
 		public ComputeReduction(int i) {
@@ -44,39 +44,20 @@ public class GeneralScan<ElemType, TallyType> {
 		 * compute()
 		 * method to be picked up by forkjoinpool
 		 * in this framework the compute() method cannot take inputs so these are defined in the constructor
+		 * From HW5 Solution
 		 */
 		protected void compute() {
-			schwartzCompute(i);
+			if (leafCount(i) < threshold) {
+				reduce(i);
+				return;
+			}
+			invokeAll(
+					new ComputeReduction(left(i)), 
+					new ComputeReduction(right(i)));
+			interior.set(i, combine(value(left(i)), value(right(i))));
 		}
 		
-		/***
-		 * schwartzCompute(Integer i)
-		 * @param i integer index o the current node
-		 * A recursive method to compute the reduction of the data.
-		 */
-		protected void schwartzCompute(Integer i) {
-			if(!isLeaf(i)) {
-				//check to see if we should split thread if we are at the cap
-				if(leafCount(i) > threshold) {
-					
-					ComputeReduction right = new ComputeReduction(right(i));
-					right.fork();
 
-					schwartzCompute(left(i));
-					
-					right.join();
-					interior.set(i, combine(value(left(i)), value(right(i))));	
-					
-				}else {
-					//if we are not at the tree cap we should loop across leaves
-					for(int j = firstLeaf(i); j <= lastLeaf(i); j++) {
-						//update the interior node or each value of its leaves
-						interior.set(i, combine(value(i), value(j)));
-					}
-				}
-				
-			}
-		}
 	//end ComputeReduction Class	
 	}
 	
@@ -103,40 +84,20 @@ public class GeneralScan<ElemType, TallyType> {
 		 * compute()
 		 * method to be picked up by forkjoinpool
 		 * in this framework the compute() method cannot take inputs so these are defined in the constructor
+		 * From HW5 Solution
 		 */
 		protected void compute() {
-			schwartzCompute(i,tallyPrior,output);
-			
+			if (leafCount(i) < threshold) {
+				scan(i, tallyPrior, output);
+				return;
+			}
+			invokeAll(
+					new ComputeScan(left(i), tallyPrior, output),
+					new ComputeScan(right(i), combine(tallyPrior, value(left(i))), output));
 		}
 		
-		/***
-		 * schwartzCompute(Integer i)
-		 * @param i integer index o the current node
-		 * A recursive method to compute the scan of the data.
-		 */
-		protected void schwartzCompute(Integer i,TallyType tallyPrior, ArrayList<TallyType> output) {
-			if(!isLeaf(i)) {
-				//check to see if we should split thread if we are at the cap
-				if(leafCount(i) > threshold) {
-					
-					//System.out.println("Left:: i; " + i + ", tallyprior: " + tallyPrior);
-					ComputeScan scanLeft = new ComputeScan(left(i), tallyPrior, output);
-					scanLeft.fork();
-					//recursiveCompute(left(i), tallyPrior, output);
-					
-					schwartzCompute(right(i), combine(tallyPrior, value(left(i))), output);
-					scanLeft.join();
+		
 
-				}else {
-					//if we are not at the cap we should loop across leaves
-					for(int j = firstLeaf(i); j <= lastLeaf(i); j++) {
-						accum(tallyPrior,value(j));
-						output.set(j-(n-1), cloneTally(tallyPrior) );
-
-					}
-				}	
-			}
-		}
 	//end ComputeScan Class	
 	}
 	
@@ -149,6 +110,7 @@ public class GeneralScan<ElemType, TallyType> {
 	private int threshold; //threshold of leaves
 	private int n; //total num leaves
 	private ForkJoinPool threadPool;
+	private int first_data;
 	
 	//constant public thread limit
 	public final int N_THREADS=16;
@@ -167,16 +129,18 @@ public class GeneralScan<ElemType, TallyType> {
 		this.rawData = raw;
 		this.threshold = threshold;
 		//calculate log base 2 of n, TODO can be removed once power of 2 restriction removed
-		this.height = (int) Math.ceil(Math.log(n)/Math.log(2));
+		this.height = 0;
+		while((1<<this.height) < n)
+			height++;
+		
+		first_data = (1<<height) - 1;
+		int m = 2 * (1 + first_data/threshold);
 		
 		//initialize the interior arraylist, each threshold of leaves requires a node in the tree cap
 		//if the lowest layer of the tree cap has M nodes, the interior of the cap has M-1 nodes for a total of 2M-1 nodes
 		interior = new ArrayList<TallyType>(n-1);
 		
-		while(interior.size()<(2*n/threshold)-1)
-			interior.add(init());
-		//if the user specified a larger threshold than there are leafs make sure we still have root node
-		if(threshold>n)
+		for (int i = 0; i < m; i++)
 			interior.add(init());
 		
 		// must be power of 2 for the scan currently 
@@ -202,7 +166,7 @@ public class GeneralScan<ElemType, TallyType> {
 		throw new IllegalArgumentException("This function to be overwritten");
 	}
 
-	protected void accum(TallyType left, TallyType right) {
+	protected void accum(TallyType tally, ElemType datum) {
 		throw new IllegalArgumentException("This function to be overwritten");
 	}
 	
@@ -210,10 +174,36 @@ public class GeneralScan<ElemType, TallyType> {
 		throw new IllegalArgumentException("This function to be overwritten");
 	}
 	
-	//private methods
-	private int size() {
-		return (n-1) +n;
+	
+	protected int size() {
+		return first_data + n;
 	}
+	
+	protected ElemType leafValue(int i) {
+		if (i < first_data || i >= size())
+			throw new IllegalArgumentException("bad i " + i);
+		return rawData.get(i - first_data);
+	}
+	
+	protected int firstData(int i) {
+		if (isLeaf(i))
+			return i < first_data ? -1 : i;
+		return firstData(left(i));
+	}
+	
+	protected int lastData(int i) {
+		if (isLeaf(i))
+			return i < first_data ? -1 : i;
+		if (hasRight(i)) {
+			int r = lastData(right(i));
+			if (r != -1)
+				return r;
+		}
+		return lastData(left(i));
+	}
+	
+	//private methods
+	
 	
 	/***
 	 * value(int i)
@@ -236,6 +226,10 @@ public class GeneralScan<ElemType, TallyType> {
 		return (i-1)/2;
 	}
 	
+	private boolean hasRight(int i) {
+		return right(i) < size();
+	}
+	
 	private int left(int i) {
 		return i*2+1;
 	}
@@ -252,19 +246,12 @@ public class GeneralScan<ElemType, TallyType> {
 	/***
 	 * leafCount(int i)
 	 * @param i integer index
-	 * @return returns the total number of leaves that are under the current node
+	 * @return returns the total number of leaves with data that are under the current node
 	 * takes any node index and returns number of leaves below using the recursive method leaf count. 
-	 * TODO make this not recursive
+	 * From HW5 Solution
 	 */
 	private int leafCount(int i) {
-		int sum=0;
-		if(!isLeaf(i)) {
-			sum+=leafCount(left(i));
-			sum+=leafCount(right(i));
-		}else
-			return 1;
-		
-		return sum;
+		return lastData(i)-firstData(i);
 	}
 	
 	//determines first leaf for an interior node i
@@ -297,10 +284,29 @@ public class GeneralScan<ElemType, TallyType> {
 	 * 
 	 * Uses ForkJoinPool to start a RecursiveAction of type ComputeReduction
 	 */
-	private boolean reduce(int i) {
-		//Uses ForkJoinPool to start a RecursiveAction task
-		threadPool.invoke(new ComputeReduction(i));
-		return true;		
+	protected void reduce(int i) {
+		int first = firstData(i), last = lastData(i);
+		//System.out.println("reduce(" + i + ") from " + first + " to " + last);
+		TallyType tally = init();
+		if (first != -1)
+			for (int j = first; j <= last; j++)
+				accum(tally, leafValue(j));
+		interior.set(i, tally);
+	}
+	
+	/***
+	 * From professor HW5 Solution
+	 * @param i
+	 * @param tallyPrior
+	 * @param output
+	 */
+	protected void scan(int i, TallyType tallyPrior, List<TallyType> output) {
+		int first = firstData(i), last = lastData(i);
+		if (first != -1)
+			for (int j = first; j <= last; j++) {
+				tallyPrior = combine(tallyPrior, value(j));
+				output.set(j - first_data, tallyPrior);
+			}
 	}
 
 	
@@ -312,7 +318,9 @@ public class GeneralScan<ElemType, TallyType> {
 	 * @return TallyType node in the tree that has been reduced
 	 */
 	public TallyType getReduction(int i) {
-		reduced = reduced || reduce(ROOT);
+		if(!reduced)
+			threadPool.invoke(new ComputeReduction(ROOT));
+
 		return value(i);
 	}
 	
@@ -324,7 +332,8 @@ public class GeneralScan<ElemType, TallyType> {
 	 * Uses ForkJoinPool to start a RecursiveAction of type ComputeScan
 	 */
 	public void getScan(ArrayList<TallyType> output) {
-		reduced = reduced || reduce(ROOT);
+		if(!reduced)
+			threadPool.invoke(new ComputeReduction(ROOT));
 		threadPool.invoke( new ComputeScan(ROOT, init(), output));
 
 	}
