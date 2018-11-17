@@ -10,6 +10,47 @@
 import java.util.ArrayList;
 import java.util.List;
 
+public class PrefixScan{
+	
+
+public static class TallyDoubAdd {
+	//class variable is public similar to the example in lecture
+	public double d;
+	
+	///Constructors
+	public TallyDoubAdd() {
+	}
+	
+	public TallyDoubAdd(Double d) {
+		this.d = d;
+	}
+	
+	public TallyDoubAdd(Integer d) {
+		this.d = d;
+
+	}
+	
+	//should take in a tally list, compute the running sum and add it to the list. 
+	public void accum(Double elem) {
+		this.d += elem;
+		
+	}
+	
+	public TallyDoubAdd clone(){
+		return new TallyDoubAdd(d);
+		
+	}
+
+	public TallyDoubAdd init() {
+		return new TallyDoubAdd();
+	}
+
+	public void combine(TallyDoubAdd other) {
+		this.d += other.d;
+		
+	}
+	
+}
 
 /***
  * PrefixScan Class
@@ -19,16 +60,16 @@ import java.util.List;
  * The output or tally values are doubles and are in the form of TallyDoubAdd type objects
  *
  */
-public class PrefixScan extends GeneralScan<Integer, TallyDoubAdd> {
+public static class PrefixScanner extends GeneralScan<Integer, TallyDoubAdd> {
 	
 	//constructors
-	public PrefixScan(List<Integer> raw) {
+	public PrefixScanner(List<Integer> raw) {
 		//default threshold of 100
 		super(raw, 100);
 	}
 	
 	
-	public PrefixScan(List<Integer> raw, int threshold) {
+	public PrefixScanner(List<Integer> raw, int threshold) {
 		super(raw, threshold);
 	}
 	
@@ -81,43 +122,44 @@ public class PrefixScan extends GeneralScan<Integer, TallyDoubAdd> {
 		return tally.clone();
 	}
 	
-	/***
-	 * Main Method 
-	 * @param args none needed at this time
-	 * Creates sample data, and computes a prefix sum scan, and a reduction to get the total sum.
-	 */
-	public static void main(String[] args) {
-		// Create test array of data from -1 to 1
-		int n = 1<<22;
-		
-		//generate test data
-		List<Integer> testData = new ArrayList<Integer>(n);
-		for(int i = 1; i <= n; i++) {
-			testData.add(i);
-		}
-		
-		//Create the prefix scan object with a threshold
-		PrefixScan pScan = new PrefixScan(testData, 1024);
-		
-		//Compute and print out sum		
-		System.out.println("Reduction: " + pScan.getReduction(0).d);
-		
-		//create arraylist for storing scan result
-		ArrayList<TallyDoubAdd> output = new ArrayList<TallyDoubAdd>(n);
-		
-		//initialize output array
-		while(output.size()<n)
-			output.add(new TallyDoubAdd(0.0));
-
-
-		//call the scan function
-		pScan.getScan(output);
-		
-		//print out the scan of the prefix sums
-		for(int i=0; i< 10; i++)
-			System.out.println("i: " + i +", value: " + output.get(i).d);
-		System.out.println("i: " + (n-1) +", value: " + output.get(n-1).d);
-		
+	
+}
+/***
+ * Main Method 
+ * @param args none needed at this time
+ * Creates sample data, and computes a prefix sum scan, and a reduction to get the total sum.
+ */
+public static void main(String[] args) {
+	// Create test array of data from -1 to 1
+	int n = 1<<22;
+	
+	//generate test data
+	List<Integer> testData = new ArrayList<Integer>(n);
+	for(int i = 1; i <= n; i++) {
+		testData.add(i);
 	}
+	
+	//Create the prefix scan object with a threshold
+	PrefixScanner pScan = new PrefixScanner(testData, 1024);
+	
+	//Compute and print out sum		
+	System.out.println("Reduction: " + pScan.getReduction(0).d);
+	
+	//create arraylist for storing scan result
+	ArrayList<TallyDoubAdd> output = new ArrayList<TallyDoubAdd>(n);
+	
+	//initialize output array
+	while(output.size()<n)
+		output.add(new TallyDoubAdd(0.0));
 
+
+	//call the scan function
+	pScan.getScan(output);
+	
+	//print out the scan of the prefix sums
+	for(int i=0; i< 10; i++)
+		System.out.println("i: " + i +", value: " + output.get(i).d);
+	System.out.println("i: " + (n-1) +", value: " + output.get(n-1).d);
+	
+}
 }
