@@ -11,30 +11,54 @@ import java.util.List;
 public class HeatMap{
 	
 
-	//Static Class Tally to hold Data
+	//Static Class Tally to hold Observation Data
 	public static class Tally{
-		public double d;
+		public double time;
+		public double x;
+		public double y;
+		public List<Observation> history;
+		
 		public Tally() {
-			d = 0.0;
+			x = 0.0;
+			y = 0.0;
+			history = new ArrayList<Observation>();
 		}
 		
-		public Tally(double d) {
-			this.d = d;
+		public Tally(Observation o) {
+			this.x = o.x;
+			this.y = o.y;
+			this.time = o.time;
+			history = new ArrayList<Observation>();
+			history.add(o);
 		}
 		
 		public static Tally combine(Tally a, Tally b) {
-			return new Tally(a.d + b.d);
+			Tally result = new Tally();
+			for(int i = 0; i < a.history.size(); i++)
+				result.history.add(a.history.get(i));
+				
+			for(int i = 0; i < b.history.size(); i++)
+				result.history.add(b.history.get(i));
+			
+			result.x = a.x +b.x;
+			result.y = a.y +b.y;
+			System.out.println("result history size: " + result.history.size());
+			return result;
+			
+			
 		}
 		
-		public void accum(double datum) {
-			this.d += datum;
+		public void accum(Observation datum) {
+			this.x += datum.x;
+			this.y += datum.y;
+			this.history.add(datum);
 		}
 	}
 	//Scan and Reduce Class
-	public static class HeatScan extends GeneralScan3<Double,Tally>{
+	public static class HeatScan extends GeneralScan3<Observation,Tally>{
 		
 	
-		public HeatScan(List<Double> raw, int threshold) {
+		public HeatScan(List<Observation> raw, int threshold) {
 			super(raw, threshold);
 			// TODO Auto-generated constructor stub
 		}
@@ -44,7 +68,7 @@ public class HeatMap{
 		}
 	
 		@Override
-		protected Tally prepare(Double datum) {
+		protected Tally prepare(Observation datum) {
 			return new Tally(datum);
 		}
 	
@@ -54,7 +78,7 @@ public class HeatMap{
 		}
 	
 		@Override
-		protected void accum(Tally tally, Double datum) {
+		protected void accum(Tally tally, Observation datum) {
 			tally.accum(datum);
 		}
 	
@@ -83,22 +107,19 @@ public class HeatMap{
          System.exit(1);
 		}
 		int num_obs = observations.size();
-		ArrayList<Double> testData = new ArrayList<Double>(num_obs);
 		
 		//Using the list of observations and count, we can make a 2Dimensional Array
-		for(int i=0; i< num_obs; i++) {
-			testData.add(observations.get(i).y);
-			//System.out.println(testData.get(i));
-		}
+
 		
 		//Create the prefix scan object with a threshold
-				HeatScan pScan = new HeatMap.HeatScan(testData, 32);
+				HeatScan pScan = new HeatMap.HeatScan(observations, 50);
 				final double EPSILON = 1e-3;
-				int n = testData.size();
+		
 				
 				//Compute and print out sum		
 				pScan.reduce(0);
-				System.out.println("Reduction: " + pScan.interior.get(0).d);
+				System.out.println("Reduction x: " + pScan.interior.get(0).x);
+				System.out.println("Reduction y: " + pScan.interior.get(0).y);
 				
 				//create arraylist for storing scan result
 				List<Tally> output = pScan.getScan();
@@ -107,11 +128,12 @@ public class HeatMap{
 				//call the scan function
 				
 				double check = 0.0;
-				for (int i = 0; i < n; i++) {
+				for (int i = 0; i < num_obs; i++) {
 					if (i < 10)
-						System.out.printf("+ %8.2f = %8.2f%n", testData.get(i), output.get(i).d);
-					else if (i == n - 1 || i % 10000 == 0)
-						System.out.printf("...(%d)%n+ %8.2f = %8.2f%n", i, testData.get(i), output.get(i).d);
+						System.out.printf("+ %8.2f, %8.2f = %8.2f, %8.2f%n", observations.get(i).x,observations.get(i).y, output.get(i).x,output.get(i).y);
+					
+					else if (i == num_obs - 1 || i % 10000 == 0)
+						System.out.printf("...(%d)%n+ %8.2f, %8.2f  = %8.2f, %8.2f%n", i, observations.get(i).x,observations.get(i).y, output.get(i).x,output.get(i).y);
 				}
 		
 		
