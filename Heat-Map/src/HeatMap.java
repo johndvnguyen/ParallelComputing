@@ -1,3 +1,7 @@
+import java.awt.BorderLayout;
+import java.awt.Color;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -5,6 +9,9 @@ import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.swing.JButton;
+import javax.swing.JFrame;
 
 
 
@@ -85,7 +92,7 @@ public class HeatMap{
 
 	}
 	
-	public static void main(String[] args) {
+	public static void main(String[] args) throws InterruptedException {
 		//Read in File data (observation_test.dat)
 		final String FILENAME = "observation_test.dat";
 		ArrayList<Observation> observations = new ArrayList<Observation>(400);
@@ -135,8 +142,102 @@ public class HeatMap{
 					else if (i == num_obs - 1 || i % 10000 == 0)
 						System.out.printf("...(%d)%n+ %8.2f, %8.2f  = %8.2f, %8.2f%n", i, observations.get(i).x,observations.get(i).y, output.get(i).x,output.get(i).y);
 				}
+				
+				
+				
+				
+				//ColorGrid stuff
+				grid = new Color[DIM][DIM];
+				application = new JFrame();
+				application.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+				fillGrid(grid,output.get(0));
+				
+				ColoredGrid gridPanel = new ColoredGrid(grid);
+				application.add(gridPanel, BorderLayout.CENTER);
+				
+				button = new JButton(REPLAY);
+				button.addActionListener(new BHandler());
+				application.add(button, BorderLayout.PAGE_END);
+				
+				application.setSize(DIM * 4, (int)(DIM * 4.4));
+				application.setVisible(true);
+				application.repaint();
+				//animate();
 		
 		
 	}
+	private static final int DIM = 200;
+	private static final String REPLAY = "Replay";
+	private static JFrame application;
+	private static JButton button;
+	private static Color[][] grid;
+	
+	private static void animate() throws InterruptedException {
+		button.setEnabled(false);
+ 		for (int i = 0; i < DIM; i++) { 
+			fillGrid(grid);
+			application.repaint();
+			Thread.sleep(50);
+		}
+		button.setEnabled(true);
+		application.repaint();
+	}
+	
+	static class BHandler implements ActionListener {
+		public void actionPerformed(ActionEvent e) {
+			if (REPLAY.equals(e.getActionCommand())) {
+				new Thread() {
+			        public void run() {
+			            try {
+								animate();
+							} catch (InterruptedException e) {
+								System.exit(0);
+							}
+			        }
+			    }.start();
+			}
+		}
+	};
+
+	static private final Color COLD = new Color(0x0a, 0x37, 0x66), HOT = Color.YELLOW;
+	static private int offset = 0;
+	
+//	private static void fillGrid(Color[][] grid, ArrayList<Tally> output) {
+//		int pixels = grid.length * grid[0].length;
+//			for (int c = 0; c < output.size(); c++) {
+//				Tally tal = output.get(c);
+//				System.out.println("grid " + ((tal.x*10)+100)+ ", " + ((tal.y*10)+100));
+//				grid[(int) ((tal.y*10)+100)][(int) (tal.x*10) +100] = interpolateColor((offset)%pixels / (double)pixels, COLD, HOT);
+//			}
+//			offset += DIM;
+//	}
+
+	
+	private static void fillGrid(Color[][] grid,Tally tal) {
+		int pixels = grid.length * grid[0].length;
+		//convert tally floats to grid space
+		//5X+5
+		tal.x = (5*tal.x)+5;
+		tal.y +=(5*tal.y)+5;
+		for (int r = 0; r < grid.length; r++)
+			for (int c = 0; c < grid[r].length; c++) {
+				if (Math.abs(r-tal.y) < 10 && Math.abs(c-tal.x) <10)
+					grid[r][c]  = HOT;
+				else
+					grid[r][c] = COLD;
+				//grid[r][c] = interpolateColor((r*c+offset)%pixels / (double)pixels, COLD, HOT);
+			}
+		offset += DIM;
+	}
+	
+//	private static Color interpolateColor(double ratio, Color a, Color b) {
+//		int ax = a.getRed();
+//		int ay = a.getGreen();
+//		int az = a.getBlue();
+//		int cx = ax + (int) ((b.getRed() - ax) * ratio);
+//		int cy = ay + (int) ((b.getGreen() - ay) * ratio);
+//		int cz = az + (int) ((b.getBlue() - az) * ratio);
+//		return new Color(cx, cy, cz);
+//	}
 
 }
