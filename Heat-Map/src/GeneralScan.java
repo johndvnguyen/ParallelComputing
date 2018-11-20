@@ -134,20 +134,20 @@ public class GeneralScan<ElemType, TallyType> {
 			height++;
 		
 		first_data = (1<<height) - 1;
-		int m = 2 * (1 + first_data/threshold);
+		int m = 4 * (1 + first_data/threshold);
 		
 		//initialize the interior arraylist, each threshold of leaves requires a node in the tree cap
 		//if the lowest layer of the tree cap has M nodes, the interior of the cap has M-1 nodes for a total of 2M-1 nodes
-		interior = new ArrayList<TallyType>(n-1);
+		interior = new ArrayList<TallyType>(m);
 		
 		for (int i = 0; i < m; i++)
 			interior.add(init());
 		
-		// must be power of 2 for the scan currently 
-		//TODO fix the power of 2 issue
-		if(1<<height != n) {
-			throw new IllegalArgumentException("n must be a power of 2");
-		}
+//		// must be power of 2 for the scan currently 
+//		//TODO fix the power of 2 issue
+//		if(1<<height != n) {
+//			throw new IllegalArgumentException("n must be a power of 2");
+//		}
 		
 		//define thread pool
 		this.threadPool = new ForkJoinPool(N_THREADS);
@@ -239,7 +239,7 @@ public class GeneralScan<ElemType, TallyType> {
 	}
 	
 	private boolean isLeaf(int i) {
-		return right(i) >= size();
+		return left(i) >= size();
 	}
 	
 	
@@ -254,28 +254,8 @@ public class GeneralScan<ElemType, TallyType> {
 		return lastData(i)-firstData(i);
 	}
 	
-	//determines first leaf for an interior node i
-	private int firstLeaf(int i) {
-		
-		while( i<=(2*n-2) && !isLeaf(i)) {
-			i = left(i);
-		}
-		return i;
-	}
+
 	
-	/***
-	 * lastLeaf(int i)
-	 * @param i integer index
-	 * @return integer value of the last leaf index
-	 * Calculates the last leaf that is under a specific node with index i
-	 */
-	private int lastLeaf(int i) {
-		while(i<=(2*n-2) && !isLeaf(i)){
-			i = right(i);
-		}
-		return i;
-		
-	}
 	
 	/***
 	 * invokes the ComputeReduction Function

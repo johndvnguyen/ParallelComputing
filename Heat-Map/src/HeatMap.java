@@ -1,4 +1,12 @@
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
+import java.util.ArrayList;
 import java.util.List;
+
+
 
 public class HeatMap{
 	
@@ -23,7 +31,7 @@ public class HeatMap{
 		}
 	}
 	//Scan and Reduce Class
-	public class HeatScan extends GeneralScan<Double,Tally>{
+	public static class HeatScan extends GeneralScan3<Double,Tally>{
 		
 	
 		public HeatScan(List<Double> raw, int threshold) {
@@ -54,8 +62,59 @@ public class HeatMap{
 	}
 	
 	public static void main(String[] args) {
-		// TODO Auto-generated method stub
+		//Read in File data (observation_test.dat)
+		final String FILENAME = "observation_test.dat";
+		ArrayList<Observation> observations = new ArrayList<Observation>(400);
+		try {
+			ObjectInputStream in = new ObjectInputStream(new FileInputStream(FILENAME));
+			int count = 0;
 
+			Observation obs = (Observation) in.readObject();
+			while (!obs.isEOF()) {
+				//System.out.println(++count + ": " + obs);
+				// add the observation to an ArrayList
+				observations.add(obs);
+				obs = (Observation) in.readObject();
+			}
+			in.close();
+		} catch (IOException | ClassNotFoundException e) {
+			System.out.println("reading from " + FILENAME + "failed: " + e);
+         e.printStackTrace();
+         System.exit(1);
+		}
+		int num_obs = observations.size();
+		ArrayList<Double> testData = new ArrayList<Double>(num_obs);
+		
+		//Using the list of observations and count, we can make a 2Dimensional Array
+		for(int i=0; i< num_obs; i++) {
+			testData.add(observations.get(i).y);
+			//System.out.println(testData.get(i));
+		}
+		
+		//Create the prefix scan object with a threshold
+				HeatScan pScan = new HeatMap.HeatScan(testData, 32);
+				final double EPSILON = 1e-3;
+				int n = testData.size();
+				
+				//Compute and print out sum		
+				pScan.reduce(0);
+				System.out.println("Reduction: " + pScan.interior.get(0).d);
+				
+				//create arraylist for storing scan result
+				List<Tally> output = pScan.getScan();
+				
+
+				//call the scan function
+				
+				double check = 0.0;
+				for (int i = 0; i < n; i++) {
+					if (i < 10)
+						System.out.printf("+ %8.2f = %8.2f%n", testData.get(i), output.get(i).d);
+					else if (i == n - 1 || i % 10000 == 0)
+						System.out.printf("...(%d)%n+ %8.2f = %8.2f%n", i, testData.get(i), output.get(i).d);
+				}
+		
+		
 	}
 
 }
