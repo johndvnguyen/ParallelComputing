@@ -21,46 +21,59 @@ public class HeatMap{
 	//Static Class Tally to hold Observation Data
 	public static class Tally{
 		public double time;
-		public double x;
-		public double y;
-		public List<Observation> history;
+		public int[][] map;
+		public List<int[][]> history;
+
 		
 		public Tally() {
-			x = 0.0;
-			y = 0.0;
-			history = new ArrayList<Observation>();
+			//default size is 25 sections.
+			map = new int[11][11];
+			history = new ArrayList<int[][]>();
 		}
 		
 		public Tally(Observation o) {
-			this.x = o.x;
-			this.y = o.y;
-			this.time = o.time;
-			history = new ArrayList<Observation>();
-			history.add(o);
+
+			map = new int[11][11];
+			history = new ArrayList<int[][]>();
+			accum(o);
 		}
 		
 		public static Tally combine(Tally a, Tally b) {
 			Tally result = new Tally();
-			for(int i = 0; i < a.history.size(); i++)
-				result.history.add(a.history.get(i));
-				
-			for(int i = 0; i < b.history.size(); i++)
-				result.history.add(b.history.get(i));
-			
-			result.x = a.x +b.x;
-			result.y = a.y +b.y;
-			System.out.println("result history size: " + result.history.size());
+			//System.out.println("combined A into the result, now combining B");
+		
+			for(int j = 0; j<11; j++) {
+				for(int k = 0; k<11; k++) {
+					//only add to current records do not take away
+					//System.out.println("i " + i +" j " + j + " k " + k);
+					
+					result.map[j][k] = a.map[j][k] + b.map[j][k];
+				}
+			}
+
+			//add the set of maps
+			//System.out.println("result history size: " + result.history.size());
 			return result;
 			
 			
 		}
 		
+		//add the observation to the current HeatMap
 		public void accum(Observation datum) {
-			this.x += datum.x;
-			this.y += datum.y;
-			this.history.add(datum);
+
+			//change the observation coordinates (-1.0 to 1.0) into matrix coordinates (0 to 10) 
+			int x = (int)((5*datum.x)+5);
+			int y = (int)((5*datum.y)+5);
+			//
+			map[x][y] += 1;
+			//add the new map to the history for scan purposes. 
+			//history.add(map.clone());
 		}
+		
+		
 	}
+	
+	
 	//Scan and Reduce Class
 	public static class HeatScan extends GeneralScan3<Observation,Tally>{
 		
@@ -120,28 +133,16 @@ public class HeatMap{
 		
 		//Create the prefix scan object with a threshold
 				HeatScan pScan = new HeatMap.HeatScan(observations, 50);
-				final double EPSILON = 1e-3;
-		
 				
 				//Compute and print out sum		
 				pScan.reduce(0);
-				System.out.println("Reduction x: " + pScan.interior.get(0).x);
-				System.out.println("Reduction y: " + pScan.interior.get(0).y);
+
 				
 				//create arraylist for storing scan result
 				List<Tally> output = pScan.getScan();
 				
 
 				//call the scan function
-				
-				double check = 0.0;
-				for (int i = 0; i < num_obs; i++) {
-					if (i < 10)
-						System.out.printf("+ %8.2f, %8.2f = %8.2f, %8.2f%n", observations.get(i).x,observations.get(i).y, output.get(i).x,output.get(i).y);
-					
-					else if (i == num_obs - 1 || i % 10000 == 0)
-						System.out.printf("...(%d)%n+ %8.2f, %8.2f  = %8.2f, %8.2f%n", i, observations.get(i).x,observations.get(i).y, output.get(i).x,output.get(i).y);
-				}
 				
 				
 				
@@ -150,7 +151,7 @@ public class HeatMap{
 				grid = new Color[DIM][DIM];
 				application = new JFrame();
 				application.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-				fillGrid(grid,output.get(0));
+				fillGrid(grid,new Tally());
 				
 				ColoredGrid gridPanel = new ColoredGrid(grid);
 				application.add(gridPanel, BorderLayout.CENTER);
@@ -159,23 +160,23 @@ public class HeatMap{
 				button.addActionListener(new BHandler());
 				application.add(button, BorderLayout.PAGE_END);
 				
-				application.setSize(DIM * 4, (int)(DIM * 4.4));
+				application.setSize(DIM * 80, (int)(DIM * 80));
 				application.setVisible(true);
 				application.repaint();
-				//animate();
+				animate(output);
 		
 		
 	}
-	private static final int DIM = 200;
+	private static final int DIM = 11;
 	private static final String REPLAY = "Replay";
 	private static JFrame application;
 	private static JButton button;
 	private static Color[][] grid;
 	
-	private static void animate() throws InterruptedException {
+	private static void animate(List<Tally> tallies) throws InterruptedException {
 		button.setEnabled(false);
- 		for (int i = 0; i < DIM; i++) { 
-			fillGrid(grid);
+ 		for (int i = 0; i < tallies.size(); i++) { 
+			fillGrid(grid,tallies.get(i));
 			application.repaint();
 			Thread.sleep(50);
 		}
@@ -188,56 +189,37 @@ public class HeatMap{
 			if (REPLAY.equals(e.getActionCommand())) {
 				new Thread() {
 			        public void run() {
-			            try {
-								animate();
-							} catch (InterruptedException e) {
-								System.exit(0);
-							}
+			            //try {
+								System.out.println("press the button");
+								//animate();
+							//} catch (InterruptedException e) {
+							//	System.exit(0);
+							//}
 			        }
 			    }.start();
 			}
 		}
 	};
 
-	static private final Color COLD = new Color(0x0a, 0x37, 0x66), HOT = Color.YELLOW;
+	static private final Color COLD = new Color(0x0a, 0x37, 0x66), HOT = Color.RED;
 	static private int offset = 0;
-	
-//	private static void fillGrid(Color[][] grid, ArrayList<Tally> output) {
-//		int pixels = grid.length * grid[0].length;
-//			for (int c = 0; c < output.size(); c++) {
-//				Tally tal = output.get(c);
-//				System.out.println("grid " + ((tal.x*10)+100)+ ", " + ((tal.y*10)+100));
-//				grid[(int) ((tal.y*10)+100)][(int) (tal.x*10) +100] = interpolateColor((offset)%pixels / (double)pixels, COLD, HOT);
-//			}
-//			offset += DIM;
-//	}
 
 	
 	private static void fillGrid(Color[][] grid,Tally tal) {
 		int pixels = grid.length * grid[0].length;
-		//convert tally floats to grid space
-		//5X+5
-		tal.x = (5*tal.x)+5;
-		tal.y +=(5*tal.y)+5;
+
+		//convert the 1's to HOT
 		for (int r = 0; r < grid.length; r++)
 			for (int c = 0; c < grid[r].length; c++) {
-				if (Math.abs(r-tal.y) < 10 && Math.abs(c-tal.x) <10)
+				//greater than or equal for possible thresholding
+				if (tal.map[r][c]>=1)
 					grid[r][c]  = HOT;
 				else
 					grid[r][c] = COLD;
-				//grid[r][c] = interpolateColor((r*c+offset)%pixels / (double)pixels, COLD, HOT);
+
 			}
-		offset += DIM;
 	}
 	
-//	private static Color interpolateColor(double ratio, Color a, Color b) {
-//		int ax = a.getRed();
-//		int ay = a.getGreen();
-//		int az = a.getBlue();
-//		int cx = ax + (int) ((b.getRed() - ax) * ratio);
-//		int cy = ay + (int) ((b.getGreen() - ay) * ratio);
-//		int cz = az + (int) ((b.getBlue() - az) * ratio);
-//		return new Color(cx, cy, cz);
-//	}
+
 
 }
