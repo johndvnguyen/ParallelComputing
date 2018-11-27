@@ -52,10 +52,12 @@ public class Observation implements Serializable {
 		final String FILENAME = "observation_test.dat";
 		try {
 			ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(FILENAME));
-			for (long t = 0; t < 1; t++)
+			for (long t = 0; t < 400; t++)
 				for (double x = -1.0; x <= 1.0; x += .1)
-					for (double y = -1.0; y <= 1.0; y += .1)
+					for (double y = -1.0; y <= 1.0; y += .1) {
 						out.writeObject(new Observation(t, x, y));
+						t++;
+					}
 			out.writeObject(new Observation());  // to mark EOF
 			out.close();
 		} catch (IOException e) {
